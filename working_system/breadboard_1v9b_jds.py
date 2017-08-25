@@ -201,6 +201,7 @@ thread = None
 
 s = 5 #create object to hold the s serial object
 
+
 def dataThread():
     global s
     unique = 456
@@ -210,32 +211,27 @@ def dataThread():
         return False
     s = serial.Serial(ser) #auto-connects already I guess?
     print(s)
-    print("Serial Connecte!")
+    print("Serial Connected!")
+    old_time = time.time()
     while True:
+        print("Loop Time: {}".format(time.time()-old_time))
+        old_time = time.time() #update time
         #current = datetime.now().isoformat()
         #current = current.replace(":","_")
         #string_to_write = input() #7,3;single\n" 
         string_to_write = "all*"
-        print(string_to_write)
         s.write(bytes(string_to_write,'UTF-8'))
-        print("sleeping now")
-        time.sleep(4)   #time running in the arduino code. Modify if needed
-        print("post_sleep")
+        #time.sleep(4)   #time running in the arduino code. Modify if needed
         no_more_data = False
-
         #this is a serious cludge:
         all_data = ""
-
         while not no_more_data:
-            #print("going")
             time.sleep(0.1)
             data_left = s.inWaiting()
             if (data_left >0): 
                 all_data += s.read(data_left).decode()
             else:
                 no_more_data = True
-
-        print(all_data)
         x = all_data
         #x = x[1]
         #print(x)
@@ -244,13 +240,8 @@ def dataThread():
         bins=[]
         for y in x:
             parts = y.split(":")
-            #print(parts[0])
-            #print(parts[1])
             bins.append((int(parts[0]),int(parts[1])))
 
-        #for random testing:
-        #voltage = [3.3*random.random() for x in range(len(names))]
-        print (bins)
         node_voltage = list()
         time_x = list()
         count = 0
@@ -290,12 +281,8 @@ def dataThread():
                 names.append(i)
                 voltage.append(old_voltage[index])
 
-        #print (names)
-        #print (voltage)
-
         #colors = ["#F1EEF6", "#D4B9DA", "#C994C7", "#DF65B0", "#DD1C77", "#980043"]    
         colors = [color_getter(v,3.3) for v in voltage]
-        #print (colors)
         source = ColumnDataSource(
             data = dict(
                 x=BB_x,
@@ -305,17 +292,9 @@ def dataThread():
                 voltage=voltage,
             )
         )
-
-
-        #output_file("bb_test_{}.html".format(current), title="Breadboard Visualizer v1.0")
-
         TOOLS="hover,save"
-
         p = figure(title="Breadboard Voltages", tools=TOOLS)
         p.toolbar.logo=None
-        #print(pixel_scaler*image_width)
-        #print(pixel_scaler*image_height)
-
         p.patches('x', 'y',
             fill_color='color', fill_alpha=0.7,
             line_color="white", line_width=0.0,
@@ -339,7 +318,7 @@ def dataThread():
         #val1 = amp1*math.sin(omega1*time.time())
         #val2 = amp2*math.sin(omega2*time.time())
         socketio.emit('update_{}'.format(unique),prep,broadcast =True)
-        print('sending')
+        #print('sending')
 
 @app.route('/')
 def index():
