@@ -5,15 +5,18 @@ from bokeh.embed import components
 import bokeh
 import random
 import math
+import requests
 import sys
 import glob
 import serial
 import json
 import struct
+import os
 import time
 # import matplotlib.pyplot as plt
 import sys
 import time
+import requests
 import math
 from threading import Thread, Lock
 from flask import Flask, render_template, session, request
@@ -22,28 +25,9 @@ from datetime import datetime
 import serial.tools.list_ports
 
 
-def serial_ports():
-    if sys.platform.startswith('win'):
-        ports = ['COM%s' % (i + 1) for i in list(range(256))]
-    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-        # this excludes your current terminal "/dev/tty"
-        ports = glob.glob('/dev/tty[A-Za-z]*')
-    elif sys.platform.startswith('darwin'):
-        ports = glob.glob('/dev/tty.*')
-    else:
-        raise EnvironmentError('Unsupported platform')
 
-    result = []
-    for port in ports:
-        try:
-            #print("checking port "+port)
-            s = serial.Serial(port)
-            #print("closing port "+port)
-            s.close()
-            result.append(port)
-        except (OSError, serial.SerialException):
-            pass
-    return result
+lcl = '~/Smart-Breadboard/ws2'
+hal = 'https://eesjs1.net/testsite/bb_logger'
 
 
 '''Automatically find Teensy on COM Port
@@ -241,7 +225,12 @@ def dataThread():
         for y in x:
             parts = y.split(":")
             bins.append((int(parts[0]),int(parts[1])))
-
+        #print(bins)
+        uname,password = [i.strip() for i in open(os.path.expanduser(lcl+'/bb_login'))]
+        payload = {'user':uname,'board':str(bins)}
+        r = requests.post(hal, json=payload, timeout=1.0)
+        print(r.status_code)
+        print(r.json())
         node_voltage = list()
         time_x = list()
         count = 0
@@ -318,6 +307,7 @@ def dataThread():
         #val1 = amp1*math.sin(omega1*time.time())
         #val2 = amp2*math.sin(omega2*time.time())
         socketio.emit('update_{}'.format(unique),prep,broadcast =True)
+        time.sleep(5)
         #print('sending')
 
 @app.route('/')
@@ -328,7 +318,7 @@ def index():
         thread = Thread(target=dataThread)
         thread.daemon = True
         thread.start()
-    return render_template('div_render.example_1.html')
+    return render_template('base.html')
 
 try:
     if __name__ == '__main__':
